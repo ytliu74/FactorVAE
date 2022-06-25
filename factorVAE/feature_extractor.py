@@ -2,9 +2,11 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from factorVAE.basic_net import MLP
+
 
 class FeatureExtractor(nn.Module):
-    def __init__(self, time_span, input_size, latent_size, gru_input_size):
+    def __init__(self, time_span, characteristic_size, latent_size, gru_input_size):
         """Feature Extractor
 
         Generate latent features from historical sequential features.
@@ -16,9 +18,15 @@ class FeatureExtractor(nn.Module):
         """
         super(FeatureExtractor, self).__init__()
         self.time_span = time_span
-        self.input_size = input_size
+        self.input_size = characteristic_size
 
-        self.proj = nn.Sequential(nn.Linear(input_size, gru_input_size), nn.LeakyReLU())
+        self.proj = MLP(
+            input_size=characteristic_size,
+            output_size=gru_input_size,
+            hidden_size=32,
+            activation=nn.LeakyReLU(),
+            out_activation=nn.LeakyReLU()
+        )
         self.gru = nn.GRU(
             input_size=gru_input_size, hidden_size=latent_size, batch_first=True
         )

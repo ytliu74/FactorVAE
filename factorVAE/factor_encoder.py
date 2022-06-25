@@ -1,7 +1,9 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+
 from torch.distributions import Normal
+from factorVAE.basic_net import MLP
 
 
 class FactorEncoder(nn.Module):
@@ -18,26 +20,29 @@ class FactorEncoder(nn.Module):
         mu_post, sigma_post = self.mapping_layer(portfolio_returns)
 
         m = Normal(mu_post, sigma_post)
-        factor = m.sample()
+        z_post = m.sample()
 
-        return factor
+        return z_post
 
 
 class MappingLayer(nn.Module):
     def __init__(self, stock_size, factor_size, hidden_size=16):
         super(MappingLayer, self).__init__()
 
-        self.mu_net = nn.Sequential(
-            nn.Linear(stock_size, hidden_size),
-            nn.ReLU(),
-            nn.Linear(hidden_size, factor_size),
+        self.mu_net = MLP(
+            input_size=stock_size,
+            output_size=factor_size,
+            hidden_size=hidden_size,
+            activation=nn.LeakyReLU(),
+            out_activation=nn.LeakyReLU()
         )
 
-        self.sigma_net = nn.Sequential(
-            nn.Linear(stock_size, hidden_size),
-            nn.ReLU(),
-            nn.Linear(hidden_size, factor_size),
-            nn.Softplus(beta=1),
+        self.sigma_net = MLP(
+            input_size=stock_size,
+            output_size=factor_size,
+            hidden_size=hidden_size,
+            activation=nn.LeakyReLU(),
+            out_activation=nn.Softplus()
         )
 
     def forward(self, x):
@@ -56,6 +61,14 @@ class PortfolioLayer(nn.Module):
             nn.ReLU(),
             nn.Linear(hidden_size, stock_size),
             nn.Softmax(dim=-1),
+        )
+
+        self.net = MLP(
+            input_size=latent_size,
+            output_size=stock_size,
+            hidden_size=hidden_size,
+            activation=nn.LeakyReLU(),
+            out_activation=nn.Softmax(dim=-1)
         )
 
     def forward(self, x):
