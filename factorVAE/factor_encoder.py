@@ -56,13 +56,6 @@ class PortfolioLayer(nn.Module):
     def __init__(self, latent_size, stock_size, hidden_size=16):
         super(PortfolioLayer, self).__init__()
 
-        self.net = nn.Sequential(
-            nn.Linear(latent_size, hidden_size),
-            nn.ReLU(),
-            nn.Linear(hidden_size, stock_size),
-            nn.Softmax(dim=-1),
-        )
-
         self.net = MLP(
             input_size=latent_size,
             output_size=stock_size,
