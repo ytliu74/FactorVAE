@@ -8,6 +8,16 @@ from factorVAE.basic_net import MLP
 
 class FactorEncoder(nn.Module):
     def __init__(self, latent_size, stock_size, factor_size, hidden_size=16):
+        """ Factor Encoder
+
+        Return mu_post, sigma_post
+
+        Args:
+            latent_size (int)
+            stock_size (int)
+            factor_size (int)
+            hidden_size (int or list)
+        """
         super(FactorEncoder, self).__init__()
 
         self.portfolio_layer = PortfolioLayer(latent_size, stock_size, hidden_size)
@@ -19,10 +29,10 @@ class FactorEncoder(nn.Module):
 
         mu_post, sigma_post = self.mapping_layer(portfolio_returns)
 
-        m = Normal(mu_post, sigma_post)
-        z_post = m.sample()
+        # m = Normal(mu_post, sigma_post)
+        # z_post = m.sample()
 
-        return z_post
+        return mu_post, sigma_post
 
 
 class MappingLayer(nn.Module):
@@ -45,9 +55,9 @@ class MappingLayer(nn.Module):
             out_activation=nn.Softplus()
         )
 
-    def forward(self, x):
-        mu_post = self.mu_net(x)
-        sigma_post = self.sigma_net(x)
+    def forward(self, portfolio_returns):
+        mu_post = self.mu_net(portfolio_returns)
+        sigma_post = self.sigma_net(portfolio_returns)
 
         return mu_post, sigma_post
 
@@ -57,20 +67,14 @@ class PortfolioLayer(nn.Module):
         super(PortfolioLayer, self).__init__()
 
         self.net = MLP(
-            input_size=latent_size,
+            input_size=latent_size * stock_size,
             output_size=stock_size,
             hidden_size=hidden_size,
             activation=nn.LeakyReLU(),
             out_activation=nn.Softmax(dim=-1)
         )
 
-    def forward(self, x):
-        out = self.net(x)
+    def forward(self, latent_features):
+        out = self.net(latent_features.view(1, -1))
 
         return out
-
-if __name__ == '__main__':
-    feat = torch.tensor([1, 2, 3, 4], dtype=torch.float)
-    ret = torch.tensor([1, 2], dtype=torch.float)
-    fe = FactorEncoder(latent_size=4, stock_size=2, factor_size=3)
-    print(fe(feat, ret))

@@ -22,6 +22,7 @@ class FactorPredictor(nn.Module):
         )
 
     def forward(self, latent_features):
+        latent_features = latent_features.unsqueeze(1)
         h = self.multi_head_attention(
             latent_features, latent_features, latent_features
         )[0].flatten()
