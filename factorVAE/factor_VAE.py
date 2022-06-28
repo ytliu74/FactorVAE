@@ -75,7 +75,7 @@ class FactorVAE(nn.Module):
         mu_prior, sigma_prior = self.factor_predictor(latent_features)
         m_predictor = Normal(mu_prior, sigma_prior)
 
-        loss_KL = kl_divergence(m_encoder, m_predictor)
+        loss_KL = kl_divergence(m_encoder, m_predictor).sum()
 
         loss = loss_negloglike + gamma * loss_KL
 
