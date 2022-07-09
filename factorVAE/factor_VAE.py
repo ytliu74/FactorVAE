@@ -53,23 +53,29 @@ class FactorVAE(nn.Module):
             latent_size=latent_size, factor_size=factor_size, stock_size=stock_size
         )
 
-    def train_model(self, characteristics, future_returns, gamma=1):
+    def run_model(self, characteristics, future_returns, gamma=1):
         latent_features = self.feature_extractor(characteristics)
+        # (batch_size, stock_size, latent_size)
 
         mu_post, sigma_post = self.factor_encoder(latent_features, future_returns)
+        # (batch_size, factor_size)
+
         m_encoder = Normal(mu_post, sigma_post)
         factors_post = m_encoder.sample()
+
+        # (batch_size, factor_size, 1)
 
         reconstruct_returns, mu_alpha, sigma_alpha, beta = self.factor_decoder(
             factors_post, latent_features
         )
 
-        loss_negloglike = 0
-        mu_dec, sigma_dec = self.get_decoder_distribution(mu_alpha, sigma_alpha, mu_post, sigma_post, beta)
-        for i in range(self.stock_size):
-            loss_negloglike += Normal(mu_dec[i], sigma_dec[i]).log_prob(
-                future_returns[i]
-            )
+        mu_dec, sigma_dec = self.get_decoder_distribution(
+            mu_alpha, sigma_alpha, mu_post, sigma_post, beta
+        )
+
+        loss_negloglike = (
+            Normal(mu_dec, sigma_dec).log_prob(future_returns.unsqueeze(-1)).sum()
+        )
         loss_negloglike = loss_negloglike * (-1 / self.stock_size)
 
         mu_prior, sigma_prior = self.factor_predictor(latent_features)
@@ -81,14 +87,36 @@ class FactorVAE(nn.Module):
 
         return loss
 
+    def prediction(self, characteristics):
+        with torch.no_grad():
+
+            latent_features = self.feature_extractor(characteristics)
+
+            mu_prior, sigma_prior = self.factor_predictor(latent_features)
+
+            m_prior = Normal(mu_prior, sigma_prior)
+            factor_prior = m_prior.sample()
+            print(factor_prior.shape)
+
+            pred_returns, mu_alpha, sigma_alpha, beta = self.factor_decoder(
+                factor_prior, latent_features
+            )
+
+            mu_dec, sigma_dec = self.get_decoder_distribution(
+                mu_alpha, sigma_alpha, mu_prior, sigma_prior, beta
+            )
+
+        return pred_returns, mu_dec, sigma_dec
+
     def get_decoder_distribution(
-        self, mu_alpha, sigma_alpha, mu_post, sigma_post, beta
+        self, mu_alpha, sigma_alpha, mu_factor, sigma_factor, beta
     ):
-        mu_dec = mu_alpha + torch.mm(mu_post, beta)
+        # print(mu_alpha.shape, mu_factor.shape, sigma_factor.shape, beta.shape)
+        mu_dec = mu_alpha + torch.bmm(beta, mu_factor)
 
         sigma_dec = torch.sqrt(
             torch.square(sigma_alpha)
-            + torch.mm(torch.square(sigma_post), torch.square(beta))
+            + torch.bmm(torch.square(beta), torch.square(sigma_factor))
         )
 
-        return mu_dec.squeeze(0), sigma_dec.squeeze(0)
+        return mu_dec, sigma_dec

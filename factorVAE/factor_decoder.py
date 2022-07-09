@@ -40,7 +40,7 @@ class FactorDecoder(nn.Module):
 
         beta = self.beta_layer(latent_features)
 
-        exposed_factors = torch.mm(factors, beta)
+        exposed_factors = torch.bmm(beta, factors)
 
         stock_returns = exposed_factors + alpha
 
@@ -76,13 +76,11 @@ class AlphaLayer(nn.Module):
         )
 
     def forward(self, latent_features):
-        mu_alpha = torch.zeros(self.stock_size)
-        sigma_alpha = torch.zeros(self.stock_size)
-
-        for i in range(self.stock_size):
-            hidden_state = self.hidden_layer(latent_features[i])
-            mu_alpha[i] = self.sigma_alpha_layer(hidden_state)
-            sigma_alpha[i] = self.sigma_alpha_layer(hidden_state)
+        # Input(latent_features) shape = (batch_size, stock_size, latent_size)
+        hidden_state = self.hidden_layer(latent_features)
+        mu_alpha = self.mu_alpha_layer(hidden_state)
+        sigma_alpha = self.sigma_alpha_layer(hidden_state)
+        # (batch_size, stock_size, 1)
 
         return mu_alpha, sigma_alpha
 
@@ -94,20 +92,16 @@ class BetaLayer(nn.Module):
         self.factor_size = factor_size
         self.stock_size = stock_size
 
-        self.input_size = latent_size * stock_size
-        self.output_size = stock_size * factor_size
-
         self.beta_layer = MLP(
-            input_size=self.input_size,
-            output_size=self.output_size,
+            input_size=latent_size,
+            output_size=factor_size,
             hidden_size=hidden_size,
             activation=nn.LeakyReLU(),
             out_activation=nn.LeakyReLU(),
         )
 
     def forward(self, latent_features):
-        out = self.beta_layer(latent_features.view(-1, self.input_size))
-
-        beta = out.view(self.factor_size, self.stock_size)
+        # (bs, stock_size, latent_size) -> (bs, stock_size, factor_size)
+        beta = self.beta_layer(latent_features)
 
         return beta

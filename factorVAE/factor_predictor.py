@@ -22,12 +22,14 @@ class FactorPredictor(nn.Module):
         )
 
     def forward(self, latent_features):
-        latent_features = latent_features.unsqueeze(1)
+
         h = self.multi_head_attention(
             latent_features, latent_features, latent_features
-        )[0].flatten()
+        )[0]
 
-        mu_prior = self.distribution_network_mu(h)
-        sigma_prior = self.distribution_network_sigma(h)
+        h = h.reshape(h.shape[0], -1) # concatenate
 
+        mu_prior = self.distribution_network_mu(h).unsqueeze(-1)
+        sigma_prior = self.distribution_network_sigma(h).unsqueeze(-1)
+        # (bs, factor_size, 1)
         return mu_prior, sigma_prior
