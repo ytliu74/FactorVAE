@@ -25,7 +25,8 @@ class MLP(nn.Module):
 
         if type(hidden_size) is list:
             num_hidden_layer = len(hidden_size)
-            self.net = nn.Sequential(input_size, hidden_size[0])
+            self.net = nn.Sequential()
+            self.net.add_module("input", nn.Linear(input_size, hidden_size[0]))
             for i in range(num_hidden_layer - 1):
                 self.net.add_module(
                     f"hidden_{i}", nn.Linear(hidden_size[i], hidden_size[i + 1])

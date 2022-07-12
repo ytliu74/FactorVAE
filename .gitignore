@@ -166,3 +166,5 @@ cython_debug/
 # End of https://www.toptal.com/developers/gitignore/api/python
 test.ipynb
 test.py
+
+dataset/

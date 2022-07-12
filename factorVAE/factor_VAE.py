@@ -76,7 +76,9 @@ class FactorVAE(nn.Module):
         loss_negloglike = (
             Normal(mu_dec, sigma_dec).log_prob(future_returns.unsqueeze(-1)).sum()
         )
-        loss_negloglike = loss_negloglike * (-1 / self.stock_size)
+
+        loss_negloglike = loss_negloglike * (-1 / (self.stock_size * latent_features.shape[0]))
+        # latent_features.shape[0] is the batch_size
 
         mu_prior, sigma_prior = self.factor_predictor(latent_features)
         m_predictor = Normal(mu_prior, sigma_prior)
