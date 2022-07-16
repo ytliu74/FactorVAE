@@ -98,7 +98,6 @@ class FactorVAE(nn.Module):
 
             m_prior = Normal(mu_prior, sigma_prior)
             factor_prior = m_prior.sample()
-            print(factor_prior.shape)
 
             pred_returns, mu_alpha, sigma_alpha, beta = self.factor_decoder(
                 factor_prior, latent_features
